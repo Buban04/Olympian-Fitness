@@ -143,6 +143,29 @@ export async function renderHeader(activeKey = '') {
       if (!fabEl.contains(e.target)) fabEl.querySelector('#fab-panel')?.classList.remove('open');
     });
   }
+  async function obtenerRolUsuario() {
+  // 1. Obtener la sesión activa de Supabase
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+
+  if (userError || !user) {
+    console.log("No hay usuario autenticado");
+    return null;
+  }
+
+  // 2. Consultar el rol directamente en la base de datos para no usar datos en caché
+  const { data: perfil, error: profileError } = await supabase
+    .from('usuarios') // O el nombre de tu tabla de perfiles (ej. 'profiles')
+    .select('rol')
+    .eq('id', user.id)
+    .single();
+
+  if (profileError) {
+    console.error("Error al obtener el rol:", profileError.message);
+    return null;
+  }
+
+  return perfil.rol; // Retorna el rol actual ('admin', 'entrenador', 'cliente', etc.)
+}
 
   return profile;
 }
