@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mi Panel - Olympian Fitness</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="encabezado">
+  <h1><a href="index.html" style="color:#000; text-decoration:none;">OLYMPIAN FITNESS</a></h1>
+  <div class="contacto" id="datos-usuario">
+    <h3>Hola…</h3>
+    <p></p>
+  </div>
+</header>
+
+<div id="aviso-membresia" style="display:none; background:#ffcc00; color:#111; text-align:center; padding:15px; font-weight:bold; font-size:18px;">
+  ⚠️ RECORDATORIO DE PAGO: Tu membresía vence pronto.
+</div>
+
+<section class="servicios">
+  <h2>BIENVENIDO A TU PANEL</h2>
+  <div class="contenedor-cards">
+    <div class="card">
+      <h3>Mis Rutinas</h3>
+      <p style="margin:15px 0; color:#555;">Consulta tus ejercicios, series y entrenamientos del día.</p>
+      <a href="rutinas.html"><button>Ingresar</button></a>
+    </div>
+    <div class="card">
+      <h3>Entrenadores</h3>
+      <p style="margin:15px 0; color:#555;">Conoce a nuestros instructores certificados.</p>
+      <a href="entrenadores.html"><button>Ingresar</button></a>
+    </div>
+    <div class="card">
+      <h3>Mi Historial</h3>
+      <p style="margin:15px 0; color:#555;">Revisa los días y horas en las que has asistido al gimnasio.</p>
+      <a href="historial.html"><button>Ingresar</button></a>
+    </div>
+    <div class="card">
+      <h3>Foro Comunidad</h3>
+      <p style="margin:15px 0; color:#555;">Comparte consejos y haz preguntas a otros miembros.</p>
+      <a href="foro.html"><button>Ingresar</button></a>
+    </div>
+    <div class="card">
+      <h3>Mis Planes</h3>
+      <p style="margin:15px 0; color:#555;">Consulta y actualiza tu membresía actual.</p>
+      <a href="planes.html"><button>Ingresar</button></a>
+    </div>
+  </div>
+
+  <h2 style="margin-top:50px;">MIS MEMBRESÍAS</h2>
+  <div class="contenedor-cards" id="lista-membresias">
+    <p class="cargando">Cargando...</p>
+  </div>
+</section>
+
+<footer>
+  <h3>OLYMPIAN FITNESS</h3>
+  <p>Dirección: Calle 10 #20-30</p>
+  <p>Teléfono: 300 000 0000</p>
+  <p>Correo: contacto@olympianfitness.com</p>
+</footer>
+
+<div id="site-fab"></div>
+
+<script type="module">
+import { supabase, renderHeader, requireAuth, signOut, escapeHtml, formatCOP, formatFecha } from './app.js';
+await renderHeader('panel.html');
+const profile = await requireAuth(['usuario']);
+if (!profile) throw new Error('redirigiendo');
+
+document.querySelector('#datos-usuario').innerHTML = `
+  <h3>Hola, ${escapeHtml(profile.nombre_completo)}</h3>
+  <p>Rol: Cliente · <a href="#" id="cerrar-sesion" style="color:orange; font-weight:bold; text-decoration:none;">Cerrar sesión</a></p>`;
+document.querySelector('#cerrar-sesion').addEventListener('click', e => { e.preventDefault(); signOut(); });
+
+const cont = document.querySelector('#lista-membresias');
+const { data, error } = await supabase
+  .from('membresias')
+  .select('*,planes(nombre,precio)')
+  .eq('usuario_id', profile.id)
+  .order('id', { ascending: false });
+
+if (error) {
+  cont.innerHTML = `<p class="vacio">${escapeHtml(error.message)}</p>`;
+} else if (!data || data.length === 0) {
+  cont.innerHTML = `<p class="vacio">Aún no tienes ninguna membresía. <a href="planes.html">Ver planes →</a></p>`;
+} else {
+  const hoy = new Date();
+  const proximaAVencer = data.some(m => m.estado === 'activa' &&
+    (new Date(m.fecha_fin) - hoy) / 86400000 <= 5);
+  if (proximaAVencer) document.querySelector('#aviso-membresia').style.display = 'block';
+
+  cont.innerHTML = data.map(m => `
+    <div class="card">
+      <h3>${escapeHtml(m.planes?.nombre || 'Plan')}</h3>
+      <p style="margin:10px 0; color:#555;">
+        <span class="badge-estado badge-${m.estado}">${escapeHtml(m.estado)}</span>
+      </p>
+      <p style="color:#777; font-size:13px;">${formatFecha(m.fecha_inicio)} — ${formatFecha(m.fecha_fin)}</p>
+      <p style="font-weight:bold; margin-top:8px;">${formatCOP(m.planes?.precio)}</p>
+    </div>`).join('');
+}
+</script>
+</body>
+</html>

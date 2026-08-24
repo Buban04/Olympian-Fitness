@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard Administrador - Olympian Fitness</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="encabezado">
+  <h1><a href="index.html" style="color:#000; text-decoration:none;">OLYMPIAN FITNESS</a></h1>
+  <div class="contacto" id="datos-usuario"><h3>Hola…</h3></div>
+</header>
+
+<div class="admin-wrap">
+  <div class="admin-tabs">
+    <a href="panel_administrador.html" class="activo">📊 Dashboard</a>
+    <a href="admin_usuarios.html">👥 Usuarios y roles</a>
+    <a href="admin_pagos.html">💳 Pagos y membresías</a>
+  </div>
+</div>
+
+<section class="servicios">
+  <h2>PANEL DE ADMINISTRADOR</h2>
+
+  <div class="contenedor-cards" style="margin-bottom:40px;" id="stats">
+    <div class="card stat-card"><h3>Cantidad de Usuarios</h3><p id="stat-usuarios">…</p></div>
+    <div class="card stat-card"><h3>Membresías Activas</h3><p id="stat-membresias">…</p></div>
+    <div class="card stat-card"><h3>Ingresos al Mes</h3><p id="stat-ingresos" style="font-size:28px;">…</p></div>
+  </div>
+
+  <div class="contenedor-cards" style="margin-bottom:40px;">
+    <div class="card" style="width:250px;">
+      <h3>👥 Gestionar Usuarios</h3>
+      <p style="margin:15px 0; color:#555;">Crea, edita, activa/desactiva y asigna roles a los usuarios.</p>
+      <a href="admin_usuarios.html"><button>Ir a Usuarios</button></a>
+    </div>
+    <div class="card" style="width:250px;">
+      <h3>💳 Gestionar Pagos</h3>
+      <p style="margin:15px 0; color:#555;">Registra membresías, revisa pagos y su estado.</p>
+      <a href="admin_pagos.html"><button>Ir a Pagos</button></a>
+    </div>
+  </div>
+</section>
+
+<section class="horarios" style="padding-top:0;">
+  <h2>ACTIVIDAD RECIENTE</h2>
+  <table id="tabla-actividad">
+    <tr><th>FECHA</th><th>USUARIO</th><th>ACCIÓN</th></tr>
+    <tr><td colspan="3" class="cargando">Cargando...</td></tr>
+  </table>
+</section>
+
+<footer>
+  <h3>OLYMPIAN FITNESS</h3>
+  <p>Dirección: Calle 10 #20-30</p>
+  <p>Teléfono: 300 000 0000</p>
+  <p>Correo: contacto@olympianfitness.com</p>
+</footer>
+
+<div id="site-fab"></div>
+
+<script type="module">
+import { supabase, renderHeader, requireAuth, signOut, escapeHtml, formatCOP, formatFecha } from './app.js';
+await renderHeader('panel_administrador.html');
+const profile = await requireAuth(['admin']);
+if (!profile) throw new Error('redirigiendo');
+
+document.querySelector('#datos-usuario').innerHTML = `
+  <h3>Hola, ${escapeHtml(profile.nombre_completo)}</h3>
+  <p>Rol: Administrador · <a href="#" id="cerrar-sesion" style="color:orange; font-weight:bold; text-decoration:none;">Cerrar sesión</a></p>`;
+document.querySelector('#cerrar-sesion').addEventListener('click', e => { e.preventDefault(); signOut(); });
+
+// --- Estadísticas ---
+const { count: totalUsuarios } = await supabase.from('usuarios').select('*', { count: 'exact', head: true });
+document.querySelector('#stat-usuarios').textContent = totalUsuarios ?? 0;
+
+const { count: membresiasActivas } = await supabase.from('membresias').select('*', { count: 'exact', head: true }).eq('estado', 'activa');
+document.querySelector('#stat-membresias').textContent = membresiasActivas ?? 0;
+
+const inicioMes = new Date(); inicioMes.setDate(1);
+const { data: membresiasMes } = await supabase
+  .from('membresias').select('planes(precio)')
+  .gte('fecha_inicio', inicioMes.toISOString().slice(0, 10));
+const ingresosMes = (membresiasMes || []).reduce((acc, m) => acc + Number(m.planes?.precio || 0), 0);
+document.querySelector('#stat-ingresos').textContent = formatCOP(ingresosMes);
+
+// --- Actividad reciente: últimas membresías + últimos usuarios registrados ---
+const tabla = document.querySelector('#tabla-actividad');
+const cab = `<tr><th>FECHA</th><th>USUARIO</th><th>ACCIÓN</th></tr>`;
+
+const { data: ultimasMembresias } = await supabase
+  .from('membresias').select('id,fecha_inicio,usuarios(nombre_completo),planes(nombre)')
+  .order('id', { ascending: false }).limit(5);
+const { data: ultimosUsuarios } = await supabase
+  .from('usuarios').select('id,nombre_completo,fecha_registro')
+  .order('id', { ascending: false }).limit(5);
+
+const actividad = [
+  ...(ultimasMembresias || []).map(m => ({
+    fecha: m.fecha_inicio, usuario: m.usuarios?.nombre_completo || '—',
+    accion: `Registró pago de ${m.planes?.nombre || 'un plan'}`
+  })),
+  ...(ultimosUsuarios || []).map(u => ({
+    fecha: u.fecha_registro, usuario: u.nombre_completo, accion: 'Se registró en la plataforma'
+  })),
+].sort((a, b) => new Date(b.fecha) - new Date(a.fecha)).slice(0, 8);
+
+tabla.innerHTML = cab + (actividad.length
+  ? actividad.map(a => `<tr><td>${formatFecha(a.fecha)}</td><td>${escapeHtml(a.usuario)}</td><td>${escapeHtml(a.accion)}</td></tr>`).join('')
+  : `<tr><td colspan="3">Aún no hay actividad registrada.</td></tr>`);
+</script>
+</body>
+</html>

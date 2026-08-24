@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Registro - Olympian Fitness</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="tituloindex" id="site-header"></header>
+
+<section class="formulario">
+  <div class="caja-formulario">
+    <h2>Crear cuenta</h2>
+    <div id="msg"></div>
+    <form id="reg-form">
+      <label>Nombre completo *</label>
+      <input name="nombre" placeholder="Juan Pérez" required>
+      <label>Correo electrónico *</label>
+      <input type="email" name="correo" placeholder="cliente@correo.com" required>
+      <label>Teléfono</label>
+      <input name="telefono" placeholder="300 000 0000">
+      <label>Contraseña *</label>
+      <input type="password" name="password" placeholder="Mínimo 6 caracteres" minlength="6" required>
+      <label>Confirmar contraseña *</label>
+      <input type="password" name="confirmar" placeholder="Repite tu contraseña" required>
+      <button type="submit">Registrarme</button>
+    </form>
+    <p style="text-align:center; margin-top:15px;">
+      ¿Ya tienes cuenta? <a class="boton-link" href="login.html">Inicia sesión aquí</a>
+    </p>
+  </div>
+</section>
+
+<footer>
+  <h3>OLYMPIAN FITNESS</h3>
+  <p>Dirección: Calle 10 #20-30</p>
+  <p>Teléfono: 300 000 0000</p>
+  <p>Correo: contacto@olympianfitness.com</p>
+</footer>
+
+<div id="site-fab"></div>
+
+<script type="module">
+import { supabase, renderHeader } from './app.js';
+renderHeader('registro.html');
+
+const msg = document.querySelector('#msg');
+document.querySelector('#reg-form').addEventListener('submit', async e => {
+  e.preventDefault();
+  const f = new FormData(e.target);
+  msg.innerHTML = '';
+
+  if (f.get('password') !== f.get('confirmar')) {
+    msg.innerHTML = `<div class="alerta error">Las contraseñas no coinciden.</div>`;
+    return;
+  }
+  if (f.get('password').length < 6) {
+    msg.innerHTML = `<div class="alerta error">La contraseña debe tener al menos 6 caracteres.</div>`;
+    return;
+  }
+
+  const { error } = await supabase.auth.signUp({
+    email: f.get('correo'),
+    password: f.get('password'),
+    options: { data: { nombre_completo: f.get('nombre'), telefono: f.get('telefono') } }
+  });
+
+  msg.innerHTML = error
+    ? `<div class="alerta error">${error.message}</div>`
+    : `<div class="alerta exito">¡Registro exitoso! Si tu proyecto pide confirmación de correo, revisa tu email. <br><a href="login.html" style="color:inherit;">Ir al Login →</a></div>`;
+  if (!error) e.target.reset();
+});
+</script>
+</body>
+</html>

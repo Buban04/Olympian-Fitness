@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gestionar Rutinas - Olympian Fitness</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  .rutina-admin-card { background:white; border-radius:15px; box-shadow:0 2px 10px rgba(0,0,0,.1); padding:25px; max-width:750px; margin:0 auto 20px; text-align:left; }
+  .rutina-admin-card h3 { color:#111; }
+  .fila-ejercicio { display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid #f0f0f0; font-size:14px; }
+  .fila-ejercicio button { padding:4px 10px; font-size:12px; }
+  .mini-form { display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
+  .mini-form input, .mini-form select { padding:8px; border-radius:6px; border:1px solid #ccc; flex:1; min-width:90px; }
+  .mini-form button { flex:0 0 auto; }
+</style>
+</head>
+<body>
+
+<header class="encabezado">
+  <h1><a href="index.html" style="color:#000; text-decoration:none;">OLYMPIAN FITNESS</a></h1>
+  <div class="contacto" id="datos-usuario"><h3>Hola…</h3></div>
+</header>
+
+<div class="admin-wrap">
+  <div class="admin-tabs">
+    <a href="panel_entrenador.html">📋 Mi Agenda</a>
+    <a href="rutinas_entrenador.html" class="activo">🏋️ Gestionar Rutinas</a>
+  </div>
+</div>
+
+<section class="servicios">
+  <h2>GESTIONAR RUTINAS</h2>
+  <div id="msg-rutinas"></div>
+
+  <div class="rutina-admin-card">
+    <h3>➕ Nueva rutina</h3>
+    <form id="form-nueva-rutina" class="mini-form" style="flex-direction:column; align-items:stretch;">
+      <input type="text" name="nombre" placeholder="Ej: Pecho, Espalda y Brazo" required>
+      <select name="usuario_id" id="select-clientes" required><option value="">Selecciona un cliente...</option></select>
+      <input type="number" name="duracion_min" min="0" placeholder="Duración en minutos (opcional)">
+      <input type="text" name="descripcion" placeholder="Notas generales de la rutina (opcional)">
+      <button type="submit">Crear rutina</button>
+    </form>
+  </div>
+
+  <div id="lista-rutinas-admin">
+    <p class="cargando">Cargando rutinas...</p>
+  </div>
+</section>
+
+<footer>
+  <h3>OLYMPIAN FITNESS</h3>
+  <p>Dirección: Calle 10 #20-30</p>
+  <p>Teléfono: 300 000 0000</p>
+  <p>Correo: contacto@olympianfitness.com</p>
+</footer>
+
+<div id="site-fab"></div>
+
+<script type="module">
+import { supabase, renderHeader, requireAuth, signOut, escapeHtml, formatFecha } from './app.js';
+await renderHeader('rutinas_entrenador.html');
+const profile = await requireAuth(['entrenador']);
+if (!profile) throw new Error('redirigiendo');
+
+document.querySelector('#datos-usuario').innerHTML = `
+  <h3>Hola, ${escapeHtml(profile.nombre_completo)}</h3>
+  <p>Rol: Entrenador · <a href="#" id="cerrar-sesion" style="color:orange; font-weight:bold; text-decoration:none;">Cerrar sesión</a></p>`;
+document.querySelector('#cerrar-sesion').addEventListener('click', e => { e.preventDefault(); signOut(); });
+
+const msg = document.querySelector('#msg-rutinas');
+const contLista = document.querySelector('#lista-rutinas-admin');
+
+const { data: perfilEntrenador } = await supabase
+  .from('entrenadores').select('id').eq('usuario_id', profile.id).maybeSingle();
+
+if (!perfilEntrenador) {
+  contLista.innerHTML = '';
+  msg.innerHTML = `<div class="alerta error">Tu perfil de entrenador aún no está configurado. Pide al administrador que te asigne una especialidad.</div>`;
+  document.querySelector('#form-nueva-rutina').style.display = 'none';
+  throw new Error('sin perfil entrenador');
+}
+const entrenadorId = perfilEntrenador.id;
+
+// Cargar clientes para el selector
+const { data: clientes } = await supabase.from('usuarios').select('id,nombre_completo').eq('rol_id', 3).order('nombre_completo');
+document.querySelector('#select-clientes').innerHTML =
+  '<option value="">Selecciona un cliente...</option>' +
+  (clientes || []).map(c => `<option value="${c.id}">${escapeHtml(c.nombre_completo)}</option>`).join('');
+
+async function cargarRutinas() {
+  const { data, error } = await supabase
+    .from('rutinas')
+    .select('id,nombre,duracion_min,descripcion,fecha_creacion,usuarios(nombre_completo),rutina_ejercicios(*)')
+    .eq('entrenador_id', entrenadorId)
+    .order('fecha_creacion', { ascending: false });
+
+  if (error) { contLista.innerHTML = `<p class="vacio">${escapeHtml(error.message)}</p>`; return; }
+  if (!data || data.length === 0) { contLista.innerHTML = `<p class="vacio">Todavía no has creado rutinas.</p>`; return; }
+
+  contLista.innerHTML = data.map(r => {
+    const exs = (r.rutina_ejercicios || []).sort((a, b) => (a.orden || 0) - (b.orden || 0));
+    return `
+    <div class="rutina-admin-card">
+      <h3>${escapeHtml(r.nombre)} <small style="color:#777; font-weight:normal;">— ${escapeHtml(r.usuarios?.nombre_completo || '')}</small></h3>
+      <p style="color:#777; font-size:13px;">
+        ${r.duracion_min ? `Duración: ${r.duracion_min} min · ` : ''}Asignada: ${formatFecha(r.fecha_creacion)}
+      </p>
+      ${r.descripcion ? `<p style="color:#555; margin:8px 0;">${escapeHtml(r.descripcion)}</p>` : ''}
+
+      <div>
+        ${exs.map(e => `
+          <div class="fila-ejercicio">
+            <span><b>${escapeHtml(e.dia)}</b>: ${escapeHtml(e.ejercicio)} — ${e.series ?? '—'} series × ${escapeHtml(e.repeticiones || '—')} ${e.notas ? `(${escapeHtml(e.notas)})` : ''}</span>
+            <button type="button" class="btn-mini btn-peligro" data-del-ej="${e.id}">Eliminar</button>
+          </div>`).join('') || '<p style="color:#999; font-size:13px;">Sin ejercicios todavía.</p>'}
+      </div>
+
+      <form class="mini-form form-ejercicio" data-rutina="${r.id}">
+        <input type="text" name="dia" placeholder="Día (Lunes)" required style="min-width:90px;">
+        <input type="text" name="ejercicio" placeholder="Ejercicio" required style="min-width:120px;">
+        <input type="number" name="series" placeholder="Series" min="0" style="min-width:70px;">
+        <input type="text" name="repeticiones" placeholder="Reps (10-12)" style="min-width:90px;">
+        <input type="text" name="notas" placeholder="Notas (opcional)" style="min-width:100px;">
+        <button type="submit" class="btn-mini">+ Ejercicio</button>
+      </form>
+
+      <div style="margin-top:15px; text-align:right;">
+        <button type="button" class="btn-mini btn-peligro" data-del-rutina="${r.id}">Eliminar rutina</button>
+      </div>
+    </div>`;
+  }).join('');
+
+  contLista.querySelectorAll('[data-del-ej]').forEach(b => b.addEventListener('click', async () => {
+    if (!confirm('¿Eliminar este ejercicio?')) return;
+    await supabase.from('rutina_ejercicios').delete().eq('id', b.dataset.delEj);
+    cargarRutinas();
+  }));
+  contLista.querySelectorAll('[data-del-rutina]').forEach(b => b.addEventListener('click', async () => {
+    if (!confirm('¿Eliminar esta rutina completa, junto con sus ejercicios?')) return;
+    await supabase.from('rutinas').delete().eq('id', b.dataset.delRutina);
+    cargarRutinas();
+  }));
+  contLista.querySelectorAll('.form-ejercicio').forEach(form => form.addEventListener('submit', async e => {
+    e.preventDefault();
+    const f = new FormData(e.target);
+    const { error } = await supabase.from('rutina_ejercicios').insert({
+      rutina_id: Number(e.target.dataset.rutina),
+      dia: f.get('dia'), ejercicio: f.get('ejercicio'),
+      series: f.get('series') ? Number(f.get('series')) : null,
+      repeticiones: f.get('repeticiones') || null,
+      notas: f.get('notas') || null,
+      orden: 0,
+    });
+    if (error) alert(error.message); else cargarRutinas();
+  }));
+}
+
+document.querySelector('#form-nueva-rutina').addEventListener('submit', async e => {
+  e.preventDefault();
+  const f = new FormData(e.target);
+  const { error } = await supabase.from('rutinas').insert({
+    usuario_id: f.get('usuario_id'),
+    entrenador_id: entrenadorId,
+    nombre: f.get('nombre'),
+    duracion_min: f.get('duracion_min') ? Number(f.get('duracion_min')) : null,
+    descripcion: f.get('descripcion') || null,
+  });
+  if (error) { msg.innerHTML = `<div class="alerta error">${escapeHtml(error.message)}</div>`; return; }
+  msg.innerHTML = `<div class="alerta exito">Rutina creada correctamente.</div>`;
+  e.target.reset();
+  cargarRutinas();
+});
+
+cargarRutinas();
+</script>
+</body>
+</html>

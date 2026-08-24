@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Planes Disponibles - Olympian Fitness</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body class="planess">
+
+<header class="tituloindex" id="site-header"></header>
+
+<section class="planes-pdf">
+  <h2>PLANES DISPONIBLES</h2>
+  <div id="msg-planes"></div>
+  <div class="contenedor-planes" id="lista-planes">
+    <p class="cargando">Cargando planes...</p>
+  </div>
+</section>
+
+<footer>
+  <h3>OLYMPIAN FITNESS</h3>
+  <p>Dirección: Calle 10 #20-30</p>
+  <p>Teléfono: 300 000 0000</p>
+  <p>Correo: contacto@olympianfitness.com</p>
+</footer>
+
+<!-- ==================== MODAL DE COMPRA ==================== -->
+<div class="modal" id="modal-compra">
+  <div class="modal-contenido">
+    <span class="cerrar" id="cerrar-modal">&times;</span>
+    <h2>Confirmar Plan</h2>
+    <p id="nombre-plan"></p>
+    <p id="precio-plan"></p>
+
+    <form id="form-pago">
+      <div class="metodos-pago">
+        <div class="metodo-opcion">
+          <input type="radio" name="metodo_pago" id="mp-tarjeta" value="tarjeta" checked>
+          <label for="mp-tarjeta">💳 Tarjeta</label>
+        </div>
+        <div class="metodo-opcion">
+          <input type="radio" name="metodo_pago" id="mp-pse" value="pse">
+          <label for="mp-pse">🏦 PSE</label>
+        </div>
+        <div class="metodo-opcion">
+          <input type="radio" name="metodo_pago" id="mp-efectivo" value="efectivo">
+          <label for="mp-efectivo">💵 Efectivo</label>
+        </div>
+      </div>
+
+      <div class="campos-pago visible" id="campos-tarjeta">
+        <div><label>Nombre del titular</label><input type="text" name="titular" placeholder="Como aparece en la tarjeta"></div>
+        <div><label>Número de tarjeta</label><input type="text" name="numero_tarjeta" placeholder="0000 0000 0000 0000" maxlength="19" inputmode="numeric"></div>
+        <div class="fila-doble">
+          <div><label>Vencimiento</label><input type="text" name="vencimiento" placeholder="MM/AA" maxlength="5"></div>
+          <div><label>CVV</label><input type="text" name="cvv" placeholder="123" maxlength="4" inputmode="numeric"></div>
+        </div>
+      </div>
+
+      <div class="campos-pago" id="campos-pse">
+        <div><label>Banco</label>
+          <select name="banco">
+            <option>Bancolombia</option><option>Davivienda</option><option>BBVA</option>
+            <option>Banco de Bogotá</option><option>Nequi</option><option>Otro</option>
+          </select>
+        </div>
+        <div><label>Tipo de persona</label>
+          <select name="tipo_persona"><option value="natural">Natural</option><option value="juridica">Jurídica</option></select>
+        </div>
+        <div><label>Documento</label><input type="text" name="documento_pse" placeholder="Número de documento"></div>
+      </div>
+
+      <div class="campos-pago" id="campos-efectivo">
+        <p style="color:#555; font-size:14px;">Tu plan quedará <strong>pendiente</strong> hasta que realices el pago en efectivo directamente en la recepción del gimnasio.</p>
+      </div>
+
+      <div class="aviso-simulado">
+        ⚠️ Esto es un pago simulado con fines de práctica/demostración. No se procesa ningún cobro real ni se guarda tu número de tarjeta completo o el CVV.
+      </div>
+
+      <button type="submit" class="btn-confirmar" style="margin-top:20px;">CONFIRMAR COMPRA</button>
+    </form>
+  </div>
+</div>
+
+<div id="site-fab"></div>
+
+<script type="module">
+import { supabase, renderHeader, getProfile, escapeHtml, formatCOP } from './app.js';
+const profile = await renderHeader('planes.html');
+
+const lista = document.querySelector('#lista-planes');
+const msgPlanes = document.querySelector('#msg-planes');
+const modal = document.querySelector('#modal-compra');
+let planSeleccionado = null;
+
+const { data: planes, error } = await supabase.from('planes').select('*').order('id');
+
+if (error) {
+  lista.innerHTML = `<p class="vacio">${escapeHtml(error.message)}</p>`;
+} else if (!planes || planes.length === 0) {
+  lista.innerHTML = `<p class="vacio">Todavía no hay planes disponibles.</p>`;
+} else {
+  lista.innerHTML = planes.map(p => {
+    const beneficios = (p.beneficios || '').split('\n').map(b => b.trim()).filter(Boolean);
+    const claseCaja = p.destacado ? 'plan-box-premium' : 'plan-box';
+    const claseTexto = p.destacado ? 'plan-box-premium-precio' : '';
+    return `
+      <div class="${claseCaja}">
+        ${p.destacado ? `<span class="etiqueta-popular">⭐ MÁS POPULAR</span>` : ''}
+        <h3>${escapeHtml(p.nombre)}</h3>
+        <ul>${beneficios.map(b => `<li>• ${escapeHtml(b)}</li>`).join('')}</ul>
+        <h4 class="${claseTexto}">${formatCOP(p.precio)} / mes</h4>
+        <button data-plan="${p.id}" data-nombre="${escapeHtml(p.nombre)}" data-precio="${formatCOP(p.precio)} / mes">SELECCIONAR</button>
+      </div>`;
+  }).join('');
+
+  lista.querySelectorAll('[data-plan]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (!profile) { location.href = 'login.html'; return; }
+      planSeleccionado = Number(btn.dataset.plan);
+      document.querySelector('#nombre-plan').textContent = btn.dataset.nombre;
+      document.querySelector('#precio-plan').textContent = btn.dataset.precio;
+      modal.style.display = 'flex';
+    });
+  });
+}
+
+document.querySelector('#cerrar-modal').addEventListener('click', () => modal.style.display = 'none');
+modal.addEventListener('click', e => { if (e.target === modal) modal.style.display = 'none'; });
+
+document.querySelectorAll('input[name="metodo_pago"]').forEach(radio => {
+  radio.addEventListener('change', function () {
+    document.querySelectorAll('.campos-pago').forEach(div => div.classList.remove('visible'));
+    document.getElementById('campos-' + this.value).classList.add('visible');
+  });
+});
+
+document.querySelector('#form-pago').addEventListener('submit', async e => {
+  e.preventDefault();
+  if (!profile || !planSeleccionado) return;
+  const f = new FormData(e.target);
+  const metodo = f.get('metodo_pago');
+
+  let referencia = '';
+  let detalle = '';
+  if (metodo === 'tarjeta') {
+    const num = (f.get('numero_tarjeta') || '').replace(/\D/g, '');
+    referencia = num ? '**** **** **** ' + num.slice(-4) : '';
+    detalle = f.get('titular') || '';
+  } else if (metodo === 'pse') {
+    referencia = f.get('banco') || '';
+    detalle = f.get('documento_pse') || '';
+  } else {
+    detalle = 'Pago pendiente en recepción';
+  }
+
+  const now = new Date();
+  const fin = new Date(now); fin.setMonth(fin.getMonth() + 1);
+
+  const { error: errIns } = await supabase.from('membresias').insert({
+    usuario_id: profile.id,
+    plan_id: planSeleccionado,
+    fecha_inicio: now.toISOString().slice(0, 10),
+    fecha_fin: fin.toISOString().slice(0, 10),
+    estado: metodo === 'efectivo' ? 'activa' : 'activa',
+    metodo_pago: metodo,
+    referencia_pago: referencia,
+    detalle_pago: detalle,
+  });
+
+  modal.style.display = 'none';
+  msgPlanes.innerHTML = errIns
+    ? `<div class="alerta error">${escapeHtml(errIns.message)}</div>`
+    : `<div class="alerta exito">¡Listo! Tu plan quedó registrado. Puedes verlo en <a href="panel.html" style="color:inherit;">tu panel</a>.</div>`;
+});
+</script>
+</body>
+</html>

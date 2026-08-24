@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agenda del Entrenador - Olympian Fitness</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="encabezado">
+  <h1><a href="index.html" style="color:#000; text-decoration:none;">OLYMPIAN FITNESS</a></h1>
+  <div class="contacto" id="datos-usuario"><h3>Hola…</h3></div>
+</header>
+
+<section class="horarios">
+  <h2>REVISAR AGENDA</h2>
+  <p style="text-align:center; color:#555; margin-bottom:20px;">Gestiona tus citas del día y revisa con quién te toca entrenar.</p>
+
+  <table id="tabla-agenda">
+    <tr><th>FECHA</th><th>HORARIO</th><th>CLIENTE ASIGNADO</th><th>ESTADO</th></tr>
+    <tr><td colspan="4" class="cargando">Cargando agenda...</td></tr>
+  </table>
+
+  <p style="text-align:center; margin-top:30px;">
+    <a class="boton-link" href="rutinas_entrenador.html">🏋️ Ir a Gestionar Rutinas de mis clientes →</a>
+  </p>
+</section>
+
+<footer>
+  <h3>OLYMPIAN FITNESS</h3>
+  <p>Dirección: Calle 10 #20-30</p>
+  <p>Teléfono: 300 000 0000</p>
+  <p>Correo: contacto@olympianfitness.com</p>
+</footer>
+
+<div id="site-fab"></div>
+
+<script type="module">
+import { supabase, renderHeader, requireAuth, signOut, escapeHtml, formatFecha } from './app.js';
+await renderHeader('panel_entrenador.html');
+const profile = await requireAuth(['entrenador']);
+if (!profile) throw new Error('redirigiendo');
+
+document.querySelector('#datos-usuario').innerHTML = `
+  <h3>Hola, ${escapeHtml(profile.nombre_completo)}</h3>
+  <p>Rol: Entrenador · <a href="#" id="cerrar-sesion" style="color:orange; font-weight:bold; text-decoration:none;">Cerrar sesión</a></p>`;
+document.querySelector('#cerrar-sesion').addEventListener('click', e => { e.preventDefault(); signOut(); });
+
+const { data: perfilEntrenador } = await supabase
+  .from('entrenadores').select('id').eq('usuario_id', profile.id).maybeSingle();
+
+const tabla = document.querySelector('#tabla-agenda');
+const cab = `<tr><th>FECHA</th><th>HORARIO</th><th>CLIENTE ASIGNADO</th><th>ESTADO</th></tr>`;
+
+if (!perfilEntrenador) {
+  tabla.innerHTML = cab + `<tr><td colspan="4">Tu perfil de entrenador aún no está configurado. Pide al administrador que te asigne una especialidad.</td></tr>`;
+} else {
+  const { data, error } = await supabase
+    .from('citas')
+    .select('id,fecha,hora_inicio,hora_fin,estado,usuarios(nombre_completo)')
+    .eq('entrenador_id', perfilEntrenador.id)
+    .order('fecha').order('hora_inicio');
+
+  if (error) {
+    tabla.innerHTML = cab + `<tr><td colspan="4">${escapeHtml(error.message)}</td></tr>`;
+  } else if (!data || data.length === 0) {
+    tabla.innerHTML = cab + `<tr><td colspan="4">No tienes citas registradas todavía.</td></tr>`;
+  } else {
+    tabla.innerHTML = cab + data.map(c => `
+      <tr>
+        <td>${formatFecha(c.fecha)}</td>
+        <td>${c.hora_inicio?.slice(0,5)} - ${c.hora_fin?.slice(0,5)}</td>
+        <td>${escapeHtml(c.usuarios?.nombre_completo || 'Sin asignar')}</td>
+        <td><span class="badge-estado badge-${c.estado === 'confirmado' ? 'activa' : c.estado === 'cancelado' ? 'cancelada' : 'pendiente'}">${escapeHtml(c.estado)}</span></td>
+      </tr>`).join('');
+  }
+}
+</script>
+</body>
+</html>

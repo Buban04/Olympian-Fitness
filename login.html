@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Iniciar sesión - Olympian Fitness</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="tituloindex" id="site-header"></header>
+
+<section class="formulario">
+  <div class="caja-formulario">
+    <h2>Iniciar sesión</h2>
+    <div id="msg"></div>
+    <form id="login-form">
+      <label>Correo electrónico</label>
+      <input type="email" name="correo" required>
+      <label>Contraseña</label>
+      <input type="password" name="password" required>
+      <button type="submit">Entrar</button>
+    </form>
+    <p style="text-align:center; margin-top:15px;">
+      ¿No tienes cuenta? <a class="boton-link" href="registro.html">Regístrate</a>
+    </p>
+  </div>
+</section>
+
+<footer>
+  <h3>OLYMPIAN FITNESS</h3>
+  <p>Dirección: Calle 10 #20-30</p>
+  <p>Teléfono: 300 000 0000</p>
+  <p>Correo: contacto@olympianfitness.com</p>
+</footer>
+
+<div id="site-fab"></div>
+
+<script type="module">
+import { supabase, renderHeader, getProfile, ROLE_HOME } from './app.js';
+renderHeader('login.html');
+
+// Si ya hay sesión activa, redirigir directo a su panel
+getProfile().then(p => { if (p) location.href = ROLE_HOME[p.rol] || 'index.html'; });
+
+const msg = document.querySelector('#msg');
+document.querySelector('#login-form').addEventListener('submit', async e => {
+  e.preventDefault();
+  const f = new FormData(e.target);
+  msg.innerHTML = '';
+  const { error } = await supabase.auth.signInWithPassword({
+    email: f.get('correo'), password: f.get('password')
+  });
+  if (error) {
+    msg.innerHTML = `<div class="alerta error">Correo o contraseña incorrectos.</div>`;
+    return;
+  }
+  const profile = await getProfile();
+  location.href = (profile && ROLE_HOME[profile.rol]) || 'index.html';
+});
+</script>
+</body>
+</html>

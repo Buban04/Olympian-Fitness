@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Olympian Fitness</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="tituloindex" id="site-header"></header>
+
+<section class="inicio">
+  <div class="contenido">
+    <h2>BIENVENIDO A OLYMPIAN FITNESS</h2>
+    <p>Mejora tu salud y transforma tu cuerpo con nuestros entrenamientos personalizados.</p>
+    <button onclick="location.href='planes.html'">¡VER PLANES!</button>
+  </div>
+</section>
+
+<section class="servicios">
+  <h2>Servicios Destacados</h2>
+  <div class="contenedor-cards">
+    <div class="card"><div class="icono">🏋️</div><h3>Rutinas</h3><p>Planes de entrenamiento personalizados.</p></div>
+    <div class="card"><div class="icono">🥇</div><h3>Membresías</h3><p>Escoge el mejor plan para ti.</p></div>
+    <div class="card"><div class="icono">👨‍💼</div><h3>Entrenadores</h3><p>Profesionales certificados.</p></div>
+    <div class="card"><div class="icono">💬</div><h3>Comunidad</h3><p>Consejos fitness y apoyo.</p></div>
+  </div>
+</section>
+
+<footer>
+  <h3>OLYMPIAN FITNESS</h3>
+  <p>Dirección: Calle 10 #20-30</p>
+  <p>Teléfono: 300 000 0000</p>
+  <p>Correo: contacto@olympianfitness.com</p>
+</footer>
+
+<div id="site-fab"></div>
+
+<script type="module">
+import { renderHeader } from './app.js';
+renderHeader('index.html');
+</script>
+</body>
+</html>

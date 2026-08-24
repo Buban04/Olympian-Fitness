@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Historial de Asistencias - Olympian Fitness</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="tituloindex" id="site-header"></header>
+
+<section class="horarios">
+  <h2>HISTORIAL DE ASISTENCIAS</h2>
+  <table id="tabla-historial">
+    <tr><th>FECHA</th><th>HORA DE ENTRADA</th><th>HORA DE SALIDA</th><th>ACTIVIDAD</th></tr>
+    <tr><td colspan="4" class="cargando">Cargando historial...</td></tr>
+  </table>
+</section>
+
+<footer>
+  <h3>OLYMPIAN FITNESS</h3>
+  <p>Dirección: Calle 10 #20-30</p>
+  <p>Teléfono: 300 000 0000</p>
+  <p>Correo: contacto@olympianfitness.com</p>
+</footer>
+
+<div id="site-fab"></div>
+
+<script type="module">
+import { supabase, renderHeader, requireAuth, escapeHtml, formatFecha } from './app.js';
+await renderHeader('historial.html');
+const profile = await requireAuth();
+if (!profile) throw new Error('redirigiendo');
+
+const tabla = document.querySelector('#tabla-historial');
+const { data, error } = await supabase
+  .from('historial_asistencias')
+  .select('*')
+  .eq('usuario_id', profile.id)
+  .order('fecha', { ascending: false });
+
+const cab = `<tr><th>FECHA</th><th>HORA DE ENTRADA</th><th>HORA DE SALIDA</th><th>ACTIVIDAD</th></tr>`;
+
+if (error) {
+  tabla.innerHTML = cab + `<tr><td colspan="4">${escapeHtml(error.message)}</td></tr>`;
+} else if (!data || data.length === 0) {
+  tabla.innerHTML = cab + `<tr><td colspan="4">Todavía no tienes asistencias registradas.</td></tr>`;
+} else {
+  tabla.innerHTML = cab + data.map(a => `
+    <tr>
+      <td>${formatFecha(a.fecha)}</td>
+      <td>${a.hora_entrada?.slice(0,5) || '—'}</td>
+      <td>${a.hora_salida ? a.hora_salida.slice(0,5) : '—'}</td>
+      <td>${escapeHtml(a.actividad)}</td>
+    </tr>`).join('');
+}
+</script>
+</body>
+</html>

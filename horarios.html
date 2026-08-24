@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Horarios Disponibles - Olympian Fitness</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="tituloindex" id="site-header"></header>
+
+<section class="horarios">
+  <h2>HORARIOS DISPONIBLES</h2>
+  <table id="tabla-horarios">
+    <tr><th>DÍAS</th><th>ABRIMOS</th><th>CERRAMOS</th><th>CONTÁCTANOS</th></tr>
+    <tr><td colspan="4" class="cargando">Cargando horarios...</td></tr>
+  </table>
+</section>
+
+<footer>
+  <h3>OLYMPIAN FITNESS</h3>
+  <p>Dirección: Calle 10 #20-30</p>
+  <p>Teléfono: 300 000 0000</p>
+  <p>Correo: contacto@olympianfitness.com</p>
+</footer>
+
+<div id="site-fab"></div>
+
+<script type="module">
+import { supabase, renderHeader, escapeHtml } from './app.js';
+renderHeader('horarios.html');
+
+const tabla = document.querySelector('#tabla-horarios');
+const { data, error } = await supabase.from('horario_gimnasio').select('*').order('id');
+
+if (error || !data || data.length === 0) {
+  tabla.innerHTML = `<tr><th>DÍAS</th><th>ABRIMOS</th><th>CERRAMOS</th><th>CONTÁCTANOS</th></tr>
+    <tr><td colspan="4">${error ? escapeHtml(error.message) : 'Aún no hay horarios registrados.'}</td></tr>`;
+} else {
+  tabla.innerHTML = `<tr><th>DÍAS</th><th>ABRIMOS</th><th>CERRAMOS</th><th>CONTÁCTANOS</th></tr>` +
+    data.map(h => `<tr>
+      <td>${escapeHtml(h.dias)}</td>
+      <td>${h.apertura?.slice(0,5) || '—'}</td>
+      <td>${h.cierre?.slice(0,5) || '—'}</td>
+      <td>${escapeHtml(h.telefono || '—')}</td>
+    </tr>`).join('');
+}
+</script>
+</body>
+</html>

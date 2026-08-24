@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Foro de la Comunidad - Olympian Fitness</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  .tema-detalle { background:white; border-radius:15px; box-shadow:0 2px 10px rgba(0,0,0,.1); padding:25px; max-width:650px; margin:0 auto 25px; text-align:left; }
+  .respuesta { border-top:1px solid #f0f0f0; padding:12px 0; font-size:14px; }
+  .respuesta small { color:#999; }
+  .foro-textarea { min-height:100px; padding:10px; border-radius:6px; border:1px solid #ccc; font-family:inherit; }
+</style>
+</head>
+<body>
+
+<header class="tituloindex" id="site-header"></header>
+
+<section class="servicios">
+  <h2>FORO DE LA COMUNIDAD</h2>
+
+  <div id="zona-nuevo-tema" style="margin-bottom:30px; display:none; max-width:650px; margin-left:auto; margin-right:auto;">
+    <form id="topic-form" class="caja-formulario" style="margin:auto; width:100%;">
+      <label>Título</label>
+      <input name="titulo" placeholder="¿Sobre qué quieres hablar?" required>
+      <label>Mensaje</label>
+      <textarea name="contenido" class="foro-textarea" placeholder="Escribe tu pregunta o consejo..." required></textarea>
+      <button type="submit">Publicar tema</button>
+    </form>
+  </div>
+  <p id="aviso-login" class="vacio" style="display:none;">
+    <a class="boton-link" href="login.html">Inicia sesión</a> para publicar en el foro.
+  </p>
+
+  <div id="detalle-tema"></div>
+
+  <div class="contenedor-cards" id="lista-temas">
+    <p class="cargando">Cargando temas...</p>
+  </div>
+</section>
+
+<footer>
+  <h3>OLYMPIAN FITNESS</h3>
+  <p>Dirección: Calle 10 #20-30</p>
+  <p>Teléfono: 300 000 0000</p>
+  <p>Correo: contacto@olympianfitness.com</p>
+</footer>
+
+<div id="site-fab"></div>
+
+<script type="module">
+import { supabase, renderHeader, escapeHtml, formatFecha } from './app.js';
+const profile = await renderHeader('foro.html');
+
+document.querySelector(profile ? '#zona-nuevo-tema' : '#aviso-login').style.display = 'block';
+
+const listaTemas = document.querySelector('#lista-temas');
+const detalleDiv = document.querySelector('#detalle-tema');
+
+async function cargarTemas() {
+  const { data, error } = await supabase
+    .from('foro_temas')
+    .select('id,titulo,contenido,fecha_creacion,usuarios(nombre_completo),foro_respuestas(id)')
+    .order('fecha_creacion', { ascending: false });
+
+  if (error) { listaTemas.innerHTML = `<p class="vacio">${escapeHtml(error.message)}</p>`; return; }
+  if (!data || data.length === 0) { listaTemas.innerHTML = `<p class="vacio">Todavía no hay temas. ¡Sé el primero en publicar!</p>`; return; }
+
+  listaTemas.innerHTML = data.map(t => `
+    <div class="card" style="width:300px;">
+      <h3>${escapeHtml(t.titulo)}</h3>
+      <p style="margin:15px 0; color:#555; font-size:14px;">
+        Creado por: ${escapeHtml(t.usuarios?.nombre_completo || 'usuario')}<br>
+        Respuestas: ${t.foro_respuestas?.length || 0}
+      </p>
+      <button style="padding:10px 20px; font-size:14px;" data-tema="${t.id}">Ver Discusión</button>
+    </div>`).join('');
+
+  listaTemas.querySelectorAll('[data-tema]').forEach(b =>
+    b.addEventListener('click', () => verTema(Number(b.dataset.tema))));
+}
+
+async function verTema(id) {
+  const { data: tema } = await supabase
+    .from('foro_temas').select('id,titulo,contenido,fecha_creacion,usuarios(nombre_completo)')
+    .eq('id', id).maybeSingle();
+  const { data: respuestas } = await supabase
+    .from('foro_respuestas').select('id,contenido,fecha_creacion,usuarios(nombre_completo)')
+    .eq('tema_id', id).order('fecha_creacion');
+
+  if (!tema) return;
+
+  detalleDiv.innerHTML = `
+    <div class="tema-detalle">
+      <a href="#" id="cerrar-tema" style="color:#ff9500; font-weight:bold; font-size:13px;">← Volver a los temas</a>
+      <h3 style="margin-top:10px;">${escapeHtml(tema.titulo)}</h3>
+      <p style="color:#777; font-size:13px; margin-bottom:10px;">
+        Por ${escapeHtml(tema.usuarios?.nombre_completo || 'usuario')} · ${formatFecha(tema.fecha_creacion)}
+      </p>
+      <p style="color:#333;">${escapeHtml(tema.contenido)}</p>
+
+      <div style="margin-top:20px;">
+        ${(respuestas || []).map(r => `
+          <div class="respuesta">
+            <p>${escapeHtml(r.contenido)}</p>
+            <small>${escapeHtml(r.usuarios?.nombre_completo || 'usuario')} · ${formatFecha(r.fecha_creacion)}</small>
+          </div>`).join('') || '<p class="vacio">Sin respuestas todavía.</p>'}
+      </div>
+
+      ${profile ? `
+        <form id="reply-form" style="margin-top:20px; display:flex; flex-direction:column; gap:10px;">
+          <textarea name="contenido" class="foro-textarea" placeholder="Escribe una respuesta..." required></textarea>
+          <button type="submit">Responder</button>
+        </form>` : ''}
+    </div>`;
+
+  detalleDiv.scrollIntoView({ behavior: 'smooth' });
+  listaTemas.style.display = 'none';
+
+  document.querySelector('#cerrar-tema').addEventListener('click', e => {
+    e.preventDefault();
+    detalleDiv.innerHTML = '';
+    listaTemas.style.display = 'flex';
+  });
+
+  document.querySelector('#reply-form')?.addEventListener('submit', async e => {
+    e.preventDefault();
+    const contenido = new FormData(e.target).get('contenido');
+    const { error } = await supabase.from('foro_respuestas').insert({
+      tema_id: id, usuario_id: profile.id, contenido
+    });
+    if (error) alert(error.message); else verTema(id);
+  });
+}
+
+document.querySelector('#topic-form')?.addEventListener('submit', async e => {
+  e.preventDefault();
+  const f = new FormData(e.target);
+  const { error } = await supabase.from('foro_temas').insert({
+    usuario_id: profile.id, titulo: f.get('titulo'), contenido: f.get('contenido')
+  });
+  if (error) { alert(error.message); return; }
+  e.target.reset();
+  cargarTemas();
+});
+
+cargarTemas();
+</script>
+</body>
+</html>

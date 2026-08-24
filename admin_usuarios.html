@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Usuarios y Roles - Olympian Fitness</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="encabezado">
+  <h1><a href="index.html" style="color:#000; text-decoration:none;">OLYMPIAN FITNESS</a></h1>
+  <div class="contacto" id="datos-usuario"><h3>Hola…</h3></div>
+</header>
+
+<div class="admin-wrap">
+  <div class="admin-tabs">
+    <a href="panel_administrador.html">📊 Dashboard</a>
+    <a href="admin_usuarios.html" class="activo">👥 Usuarios y roles</a>
+    <a href="admin_pagos.html">💳 Pagos y membresías</a>
+  </div>
+
+  <h2 style="margin-bottom:15px;">USUARIOS Y ROLES</h2>
+  <div id="msg-usuarios"></div>
+
+  <p style="background:#fff5e6; color:#a05a00; padding:12px 16px; border-radius:8px; font-size:13px; margin-bottom:20px;">
+    ℹ️ Los usuarios nuevos deben crear su cuenta desde <a href="registro.html" style="color:inherit; font-weight:bold;">la página de registro</a>
+    (por seguridad, un sitio estático no puede crear cuentas con contraseña directamente). Desde aquí puedes cambiar su rol
+    y activar/desactivar su acceso.
+  </p>
+
+  <div style="overflow-x:auto;">
+    <table class="tabla-admin" id="tabla-usuarios">
+      <tr><th>Nombre</th><th>Correo</th><th>Teléfono</th><th>Rol</th><th>Estado</th><th></th></tr>
+      <tr><td colspan="6" class="cargando">Cargando usuarios...</td></tr>
+    </table>
+  </div>
+</div>
+
+<div id="site-fab"></div>
+
+<script type="module">
+import { supabase, renderHeader, requireAuth, signOut, escapeHtml } from './app.js';
+await renderHeader('admin_usuarios.html');
+const profile = await requireAuth(['admin']);
+if (!profile) throw new Error('redirigiendo');
+
+document.querySelector('#datos-usuario').innerHTML = `
+  <h3>Hola, ${escapeHtml(profile.nombre_completo)}</h3>
+  <p>Rol: Administrador · <a href="#" id="cerrar-sesion" style="color:orange; font-weight:bold; text-decoration:none;">Cerrar sesión</a></p>`;
+document.querySelector('#cerrar-sesion').addEventListener('click', e => { e.preventDefault(); signOut(); });
+
+const msg = document.querySelector('#msg-usuarios');
+const tabla = document.querySelector('#tabla-usuarios');
+const cab = `<tr><th>Nombre</th><th>Correo</th><th>Teléfono</th><th>Rol</th><th>Estado</th><th></th></tr>`;
+
+const { data: roles } = await supabase.from('roles').select('id,nombre').order('id');
+const opcionesRol = (rolId) => (roles || []).map(r =>
+  `<option value="${r.id}" ${r.id === rolId ? 'selected' : ''}>${escapeHtml(r.nombre)}</option>`).join('');
+
+async function cargarUsuarios() {
+  const { data, error } = await supabase
+    .from('usuarios').select('id,nombre_completo,correo,telefono,rol_id,activo')
+    .order('nombre_completo');
+
+  if (error) { tabla.innerHTML = cab + `<tr><td colspan="6">${escapeHtml(error.message)}</td></tr>`; return; }
+  if (!data || data.length === 0) { tabla.innerHTML = cab + `<tr><td colspan="6">No hay usuarios.</td></tr>`; return; }
+
+  tabla.innerHTML = cab + data.map(u => `
+    <tr data-id="${u.id}">
+      <td>${escapeHtml(u.nombre_completo)}</td>
+      <td>${escapeHtml(u.correo)}</td>
+      <td>${escapeHtml(u.telefono || '—')}</td>
+      <td><select class="sel-rol" ${u.id === profile.id ? 'disabled' : ''}>${opcionesRol(u.rol_id)}</select></td>
+      <td>
+        <span class="badge-estado ${u.activo ? 'badge-activo' : 'badge-inactivo'}">${u.activo ? 'Activo' : 'Inactivo'}</span>
+      </td>
+      <td>
+        <button type="button" class="btn-mini btn-guardar" ${u.id === profile.id ? 'disabled' : ''}>Guardar</button>
+        <button type="button" class="btn-mini ${u.activo ? 'btn-peligro' : ''} btn-toggle" ${u.id === profile.id ? 'disabled' : ''}>
+          ${u.activo ? 'Desactivar' : 'Activar'}
+        </button>
+      </td>
+    </tr>`).join('');
+
+  tabla.querySelectorAll('tr[data-id]').forEach(tr => {
+    const id = tr.dataset.id;
+    let activo = tr.querySelector('.badge-activo, .badge-inactivo').classList.contains('badge-activo');
+
+    tr.querySelector('.btn-guardar')?.addEventListener('click', async () => {
+      const rol_id = Number(tr.querySelector('.sel-rol').value);
+      const { error: errUpd } = await supabase.from('usuarios').update({ rol_id }).eq('id', id);
+      msg.innerHTML = errUpd
+        ? `<div class="alerta error">${escapeHtml(errUpd.message)}</div>`
+        : `<div class="alerta exito">Rol actualizado correctamente.</div>`;
+      if (!errUpd && rol_id === 2) {
+        const { data: yaExiste } = await supabase.from('entrenadores').select('id').eq('usuario_id', id).maybeSingle();
+        if (!yaExiste) await supabase.from('entrenadores').insert({ usuario_id: id, especialidad: 'Entrenamiento general' });
+      }
+    });
+
+    tr.querySelector('.btn-toggle')?.addEventListener('click', async () => {
+      const { error: errUpd } = await supabase.from('usuarios').update({ activo: !activo }).eq('id', id);
+      if (errUpd) { msg.innerHTML = `<div class="alerta error">${escapeHtml(errUpd.message)}</div>`; return; }
+      cargarUsuarios();
+    });
+  });
+}
+
+cargarUsuarios();
+</script>
+</body>
+</html>

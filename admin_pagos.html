@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pagos y Membresías - Olympian Fitness</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="encabezado">
+  <h1><a href="index.html" style="color:#000; text-decoration:none;">OLYMPIAN FITNESS</a></h1>
+  <div class="contacto" id="datos-usuario"><h3>Hola…</h3></div>
+</header>
+
+<div class="admin-wrap">
+  <div class="admin-tabs">
+    <a href="panel_administrador.html">📊 Dashboard</a>
+    <a href="admin_usuarios.html">👥 Usuarios y roles</a>
+    <a href="admin_pagos.html" class="activo">💳 Pagos y membresías</a>
+  </div>
+
+  <h2 style="margin-bottom:15px;">PAGOS Y MEMBRESÍAS</h2>
+  <div id="msg-pagos"></div>
+
+  <form id="form-registrar" class="form-admin">
+    <div><label>Cliente</label><select name="usuario_id" id="select-usuarios" required><option value="">Selecciona...</option></select></div>
+    <div><label>Plan</label><select name="plan_id" id="select-planes" required><option value="">Selecciona...</option></select></div>
+    <div><label>Fecha inicio</label><input type="date" name="fecha_inicio" required></div>
+    <div><label>Fecha fin</label><input type="date" name="fecha_fin" required></div>
+    <button type="submit">Registrar membresía</button>
+  </form>
+
+  <div style="overflow-x:auto;">
+    <table class="tabla-admin" id="tabla-membresias">
+      <tr><th>Cliente</th><th>Plan</th><th>Inicio</th><th>Fin</th><th>Método</th><th>Estado</th><th></th></tr>
+      <tr><td colspan="7" class="cargando">Cargando membresías...</td></tr>
+    </table>
+  </div>
+</div>
+
+<div id="site-fab"></div>
+
+<script type="module">
+import { supabase, renderHeader, requireAuth, signOut, escapeHtml, formatCOP, formatFecha } from './app.js';
+await renderHeader('admin_pagos.html');
+const profile = await requireAuth(['admin']);
+if (!profile) throw new Error('redirigiendo');
+
+document.querySelector('#datos-usuario').innerHTML = `
+  <h3>Hola, ${escapeHtml(profile.nombre_completo)}</h3>
+  <p>Rol: Administrador · <a href="#" id="cerrar-sesion" style="color:orange; font-weight:bold; text-decoration:none;">Cerrar sesión</a></p>`;
+document.querySelector('#cerrar-sesion').addEventListener('click', e => { e.preventDefault(); signOut(); });
+
+const msg = document.querySelector('#msg-pagos');
+const tabla = document.querySelector('#tabla-membresias');
+const cab = `<tr><th>Cliente</th><th>Plan</th><th>Inicio</th><th>Fin</th><th>Método</th><th>Estado</th><th></th></tr>`;
+
+const { data: clientes } = await supabase.from('usuarios').select('id,nombre_completo').eq('rol_id', 3).order('nombre_completo');
+document.querySelector('#select-usuarios').innerHTML += (clientes || [])
+  .map(c => `<option value="${c.id}">${escapeHtml(c.nombre_completo)}</option>`).join('');
+
+const { data: planes } = await supabase.from('planes').select('id,nombre,precio').order('id');
+document.querySelector('#select-planes').innerHTML += (planes || [])
+  .map(p => `<option value="${p.id}">${escapeHtml(p.nombre)} — ${formatCOP(p.precio)}</option>`).join('');
+
+async function cargarMembresias() {
+  const { data, error } = await supabase
+    .from('membresias')
+    .select('id,fecha_inicio,fecha_fin,estado,metodo_pago,usuarios(nombre_completo),planes(nombre)')
+    .order('id', { ascending: false });
+
+  if (error) { tabla.innerHTML = cab + `<tr><td colspan="7">${escapeHtml(error.message)}</td></tr>`; return; }
+  if (!data || data.length === 0) { tabla.innerHTML = cab + `<tr><td colspan="7">No hay membresías registradas.</td></tr>`; return; }
+
+  tabla.innerHTML = cab + data.map(m => `
+    <tr data-id="${m.id}">
+      <td>${escapeHtml(m.usuarios?.nombre_completo || '—')}</td>
+      <td>${escapeHtml(m.planes?.nombre || '—')}</td>
+      <td>${formatFecha(m.fecha_inicio)}</td>
+      <td>${formatFecha(m.fecha_fin)}</td>
+      <td>${escapeHtml(m.metodo_pago || '—')}</td>
+      <td>
+        <select class="sel-estado">
+          <option value="activa" ${m.estado === 'activa' ? 'selected' : ''}>Activa</option>
+          <option value="vencida" ${m.estado === 'vencida' ? 'selected' : ''}>Vencida</option>
+          <option value="cancelada" ${m.estado === 'cancelada' ? 'selected' : ''}>Cancelada</option>
+        </select>
+      </td>
+      <td>
+        <button type="button" class="btn-mini btn-guardar-estado">Guardar</button>
+        <button type="button" class="btn-mini btn-peligro btn-eliminar">Eliminar</button>
+      </td>
+    </tr>`).join('');
+
+  tabla.querySelectorAll('tr[data-id]').forEach(tr => {
+    const id = tr.dataset.id;
+    tr.querySelector('.btn-guardar-estado').addEventListener('click', async () => {
+      const estado = tr.querySelector('.sel-estado').value;
+      const { error: errUpd } = await supabase.from('membresias').update({ estado }).eq('id', id);
+      msg.innerHTML = errUpd
+        ? `<div class="alerta error">${escapeHtml(errUpd.message)}</div>`
+        : `<div class="alerta exito">Estado actualizado.</div>`;
+    });
+    tr.querySelector('.btn-eliminar').addEventListener('click', async () => {
+      if (!confirm('¿Eliminar este registro de membresía?')) return;
+      const { error: errDel } = await supabase.from('membresias').delete().eq('id', id);
+      if (errDel) { msg.innerHTML = `<div class="alerta error">${escapeHtml(errDel.message)}</div>`; return; }
+      cargarMembresias();
+    });
+  });
+}
+
+document.querySelector('#form-registrar').addEventListener('submit', async e => {
+  e.preventDefault();
+  const f = new FormData(e.target);
+  if (f.get('fecha_fin') < f.get('fecha_inicio')) {
+    msg.innerHTML = `<div class="alerta error">La fecha de fin no puede ser anterior a la fecha de inicio.</div>`;
+    return;
+  }
+  const { error } = await supabase.from('membresias').insert({
+    usuario_id: f.get('usuario_id'),
+    plan_id: Number(f.get('plan_id')),
+    fecha_inicio: f.get('fecha_inicio'),
+    fecha_fin: f.get('fecha_fin'),
+    estado: 'activa',
+    metodo_pago: 'efectivo',
+  });
+  msg.innerHTML = error
+    ? `<div class="alerta error">${escapeHtml(error.message)}</div>`
+    : `<div class="alerta exito">Membresía registrada correctamente.</div>`;
+  if (!error) { e.target.reset(); cargarMembresias(); }
+});
+
+cargarMembresias();
+</script>
+</body>
+</html>

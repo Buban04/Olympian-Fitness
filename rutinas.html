@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mis Rutinas - Olympian Fitness</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="tituloindex" id="site-header"></header>
+
+<section class="servicios">
+  <h2>MIS RUTINAS</h2>
+  <div id="lista-rutinas">
+    <p class="cargando">Cargando rutinas...</p>
+  </div>
+</section>
+
+<footer>
+  <h3>OLYMPIAN FITNESS</h3>
+  <p>Dirección: Calle 10 #20-30</p>
+  <p>Teléfono: 300 000 0000</p>
+  <p>Correo: contacto@olympianfitness.com</p>
+</footer>
+
+<div id="site-fab"></div>
+
+<script type="module">
+import { supabase, renderHeader, requireAuth, escapeHtml, formatFecha } from './app.js';
+await renderHeader('rutinas.html');
+const profile = await requireAuth();
+if (!profile) throw new Error('redirigiendo');
+
+const cont = document.querySelector('#lista-rutinas');
+
+const { data, error } = await supabase
+  .from('rutinas')
+  .select('id,nombre,duracion_min,descripcion,fecha_creacion,entrenadores(especialidad,usuarios(nombre_completo)),rutina_ejercicios(*)')
+  .eq('usuario_id', profile.id)
+  .order('fecha_creacion', { ascending: false });
+
+if (error) {
+  cont.innerHTML = `<p class="vacio">${escapeHtml(error.message)}</p>`;
+} else if (!data || data.length === 0) {
+  cont.innerHTML = `<p class="vacio">Todavía no tienes rutinas asignadas. Habla con tu entrenador para que te cree una.</p>`;
+} else {
+  cont.innerHTML = data.map(r => {
+    const ejercicios = (r.rutina_ejercicios || []).sort((a, b) => (a.orden || 0) - (b.orden || 0));
+    return `
+    <div class="rutina-card-cliente">
+      <h3>${escapeHtml(r.nombre)}</h3>
+      <div class="meta">
+        Entrenador: ${escapeHtml(r.entrenadores?.usuarios?.nombre_completo || '—')}
+        ${r.duracion_min ? ` · Duración: ${r.duracion_min} min` : ''}
+        · Asignada: ${formatFecha(r.fecha_creacion)}
+      </div>
+      ${r.descripcion ? `<p style="color:#555; margin-bottom:10px;">${escapeHtml(r.descripcion)}</p>` : ''}
+      <details>
+        <summary>Ver ejercicios (${ejercicios.length})</summary>
+        <table class="tabla-ejercicios">
+          <tr><th>Día</th><th>Ejercicio</th><th>Series</th><th>Repeticiones</th><th>Notas</th></tr>
+          ${ejercicios.length === 0
+            ? `<tr><td colspan="5" style="color:#999;">Tu entrenador aún no agregó ejercicios a esta rutina.</td></tr>`
+            : ejercicios.map(e => `
+              <tr>
+                <td>${escapeHtml(e.dia)}</td>
+                <td>${escapeHtml(e.ejercicio)}</td>
+                <td>${e.series ?? '—'}</td>
+                <td>${escapeHtml(e.repeticiones || '—')}</td>
+                <td>${escapeHtml(e.notas || '')}</td>
+              </tr>`).join('')}
+        </table>
+      </details>
+    </div>`;
+  }).join('');
+}
+</script>
+</body>
+</html>
