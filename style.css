@@ -693,7 +693,7 @@ backdrop-filter:blur(10px);
 .cargando, .vacio { text-align:center; color:#777; padding:30px; }
 
 /* ---- FAB (botón flotante por rol) ---- */
-.fab{position:fixed;bottom:30px;right:30px;z-index:9999;}
+#site-fab{position:fixed;bottom:30px;right:30px;z-index:9999;}
 .fab-btn{width:60px;height:60px;border-radius:50%;background:#ff9500;border:none;cursor:pointer;font-size:26px;box-shadow:0 4px 20px rgba(255,149,0,.5);transition:transform .2s,box-shadow .2s;display:flex;align-items:center;justify-content:center;}
 .fab-btn:hover{transform:scale(1.1);box-shadow:0 6px 25px rgba(255,149,0,.7);background:#ff9500;}
 .fab-panel{display:none;position:absolute;bottom:75px;right:0;background:white;border-radius:16px;box-shadow:0 8px 30px rgba(0,0,0,.15);width:260px;overflow:hidden;animation:fabUp .2s ease;}
@@ -766,4 +766,4 @@ body { min-height: 100vh; display: flex; flex-direction: column; margin: 0; }
 body > footer { margin-top: auto; }
 
 /* ---- Fab siempre fijo abajo a la derecha ---- */
-.fab { position: fixed !important; right: 30px !important; left: auto !important; bottom: 30px !important; z-index: 9999; }
+#site-fab { position: fixed !important; right: 30px !important; left: auto !important; bottom: 30px !important; z-index: 9999; }
