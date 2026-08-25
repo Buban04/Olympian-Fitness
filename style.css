@@ -767,3 +767,31 @@ body > footer { margin-top: auto; }
 
 /* ---- Fab siempre fijo abajo a la derecha ---- */
 #site-fab { position: fixed !important; right: 30px !important; left: auto !important; bottom: 30px !important; z-index: 9999; }
+
+/* ---- Hero con foto para la página de planes ---- */
+.planes-hero {
+  height: 320px;
+  background: url("fondo2.jpg");
+  background-size: cover;
+  background-position: center;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+}
+.planes-hero-overlay {
+  background: rgba(0,0,0,0.55);
+  color: white;
+  padding: 35px 40px;
+  border-radius: 12px;
+  max-width: 600px;
+}
+.planes-hero-overlay h2 { color: white; margin-bottom: 10px; letter-spacing: 1px; }
+.planes-hero-overlay p { color: #eee; font-size: 15px; }
+
+/* ---- Mejoras a las tarjetas de planes ---- */
+.plan-box, .plan-box-premium { background: white; text-align: center; }
+.plan-box .icono-plan, .plan-box-premium .icono-plan { font-size: 34px; margin-bottom: 10px; }
+.plan-box ul, .plan-box-premium ul { text-align: left; }
+.plan-box li, .plan-box-premium li { font-size: 14px; color: #444; line-height: 1.5; }
+.plan-box h4, .plan-box-premium h4 { font-size: 22px; color: #ff9500; }
