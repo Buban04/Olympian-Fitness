@@ -10,8 +10,14 @@
 
 <header class="tituloindex" id="site-header"></header>
 
+<section class="planes-hero">
+  <div class="planes-hero-overlay">
+    <h2>PLANES DISPONIBLES</h2>
+    <p>Elige el plan que mejor se ajuste a tus metas y empieza hoy mismo.</p>
+  </div>
+</section>
+
 <section class="planes-pdf">
-  <h2>PLANES DISPONIBLES</h2>
   <div id="msg-planes"></div>
   <div class="contenedor-planes" id="lista-planes">
     <p class="cargando">Cargando planes...</p>
@@ -103,14 +109,18 @@ if (error) {
   lista.innerHTML = `<p class="vacio">Todavía no hay planes disponibles.</p>`;
 } else {
   lista.innerHTML = planes.map(p => {
-    const beneficios = (p.beneficios || '').split('\n').map(b => b.trim()).filter(Boolean);
+    const beneficios = (p.beneficios || '')
+      .replace(/\\n/g, '\n')
+      .split('\n').map(b => b.trim()).filter(Boolean);
     const claseCaja = p.destacado ? 'plan-box-premium' : 'plan-box';
     const claseTexto = p.destacado ? 'plan-box-premium-precio' : '';
+    const icono = p.destacado ? '⭐' : (p.precio >= 100000 ? '🏆' : '💪');
     return `
       <div class="${claseCaja}">
         ${p.destacado ? `<span class="etiqueta-popular">⭐ MÁS POPULAR</span>` : ''}
+        <div class="icono-plan">${icono}</div>
         <h3>${escapeHtml(p.nombre)}</h3>
-        <ul>${beneficios.map(b => `<li>• ${escapeHtml(b)}</li>`).join('')}</ul>
+        <ul>${beneficios.map(b => `<li>✔ ${escapeHtml(b)}</li>`).join('')}</ul>
         <h4 class="${claseTexto}">${formatCOP(p.precio)} / mes</h4>
         <button data-plan="${p.id}" data-nombre="${escapeHtml(p.nombre)}" data-precio="${formatCOP(p.precio)} / mes">SELECCIONAR</button>
       </div>`;
