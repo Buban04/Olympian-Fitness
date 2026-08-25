@@ -759,3 +759,11 @@ details summary { cursor:pointer; font-weight:bold; color:#ff9500; }
 .fila-doble { display:flex; gap:10px; }
 .fila-doble > div { flex:1; }
 .aviso-simulado { background:#fff5e6; color:#a05a00; font-size:12px; padding:10px; border-radius:8px; margin-top:15px; text-align:left; }
+
+/* ---- Layout: pie de página pegado abajo cuando el contenido es corto ---- */
+html, body { height: 100%; }
+body { min-height: 100vh; display: flex; flex-direction: column; margin: 0; }
+body > footer { margin-top: auto; }
+
+/* ---- Fab siempre fijo abajo a la derecha ---- */
+.fab { position: fixed !important; right: 30px !important; left: auto !important; bottom: 30px !important; z-index: 9999; }
