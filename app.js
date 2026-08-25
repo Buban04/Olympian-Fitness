@@ -26,16 +26,22 @@ export const formatFecha = f => {
 };
 
 // Perfil del usuario autenticado (tabla public.usuarios + rol)
+// Mapa fijo id -> nombre de rol (coincide con supabase/schema.sql).
+// Se usa en vez de depender del embed "roles(nombre)" de PostgREST,
+// que puede devolver null si el caché de esquema de Supabase no ha
+// terminado de reconocer la relación entre usuarios y roles.
+const ROLES_POR_ID = { 1: 'admin', 2: 'entrenador', 3: 'usuario' };
+
 export async function getProfile() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
   const { data, error } = await supabase
     .from('usuarios')
-    .select('id,nombre_completo,correo,telefono,rol_id,activo,fecha_registro,roles(nombre)')
+    .select('id,nombre_completo,correo,telefono,rol_id,activo,fecha_registro')
     .eq('id', user.id)
     .maybeSingle();
   if (error) { console.error(error); return null; }
-  return data ? { ...data, rol: data.roles?.nombre || 'usuario' } : null;
+  return data ? { ...data, rol: ROLES_POR_ID[data.rol_id] || 'usuario' } : null;
 }
 
 export async function signOut() {
@@ -143,29 +149,6 @@ export async function renderHeader(activeKey = '') {
       if (!fabEl.contains(e.target)) fabEl.querySelector('#fab-panel')?.classList.remove('open');
     });
   }
-  async function obtenerRolUsuario() {
-  // 1. Obtener la sesión activa de Supabase
-  const { data: { user }, error: userError } = await supabase.auth.getUser();
-
-  if (userError || !user) {
-    console.log("No hay usuario autenticado");
-    return null;
-  }
-
-  // 2. Consultar el rol directamente en la base de datos para no usar datos en caché
-  const { data: perfil, error: profileError } = await supabase
-    .from('usuarios') // O el nombre de tu tabla de perfiles (ej. 'profiles')
-    .select('rol')
-    .eq('id', user.id)
-    .single();
-
-  if (profileError) {
-    console.error("Error al obtener el rol:", profileError.message);
-    return null;
-  }
-
-  return perfil.rol; // Retorna el rol actual ('admin', 'entrenador', 'cliente', etc.)
-}
 
   return profile;
 }
