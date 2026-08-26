@@ -13,6 +13,7 @@
 <section class="horarios">
   <span class="horarios-eyebrow">OLYMPIAN FITNESS</span>
   <h2>Horarios disponibles</h2>
+  <p class="horarios-sub">Elige el día y ven cuando mejor te quede</p>
   <div id="horarios-grid" class="horarios-grid">
     <p class="horarios-msg">Cargando horarios...</p>
   </div>
@@ -34,13 +35,19 @@ renderHeader('horarios.html');
 const grid = document.querySelector('#horarios-grid');
 
 const rangosPorDias = {
-  "Lunes a Miércoles": { from: 1, to: 3 },
-  "Jueves a Viernes": { from: 4, to: 5 },
-  "Sábados, domingos y festivos": { from: 6, to: 0 }
+  "Lunes a Miércoles": { from: 1, to: 3, icono: "☀️" },
+  "Jueves a Viernes": { from: 4, to: 5, icono: "⚡" },
+  "Sábados, domingos y festivos": { from: 6, to: 0, icono: "🎉" }
 };
 
 function enRango(dia, from, to) {
   return from <= to ? (dia >= from && dia <= to) : (dia >= from || dia <= to);
+}
+
+function esHoy(dias) {
+  const rango = rangosPorDias[dias];
+  if (!rango) return false;
+  return enRango(new Date().getDay(), rango.from, rango.to);
 }
 
 function abiertoAhora(dias, apertura, cierre) {
@@ -60,13 +67,14 @@ if (error || !data || data.length === 0) {
 } else {
   grid.innerHTML = data.map(h => {
     const abierto = abiertoAhora(h.dias, h.apertura, h.cierre);
-    return `<div class="horario-card">
-      <div class="top">
-        <span class="icono">⏱</span>
-        ${abierto ? '<span class="badge-abierto">Abierto ahora</span>' : ''}
-      </div>
+    const hoy = esHoy(h.dias);
+    const icono = rangosPorDias[h.dias]?.icono || '🕐';
+    return `<div class="horario-card ${hoy ? 'hoy' : ''}">
+      ${abierto ? '<span class="badge-abierto">Abierto ahora</span>' : ''}
+      <div class="icono-circulo">${icono}</div>
       <p class="dias">${escapeHtml(h.dias)}</p>
       <p class="rango">${h.apertura?.slice(0,5) || '—'} - ${h.cierre?.slice(0,5) || '—'}</p>
+      <div class="separador"></div>
       <a class="contacto" href="tel:${escapeHtml(h.telefono || '')}">📞 ${escapeHtml(h.telefono || '—')}</a>
     </div>`;
   }).join('');
