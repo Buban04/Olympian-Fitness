@@ -186,7 +186,10 @@ footer {
 .horarios {
     padding: 60px 20px 70px;
     text-align: center;
-    background: #fafafa;
+    background-color: #fafafa;
+    background-image: radial-gradient(#e8e8e8 1px, transparent 1px);
+    background-size: 22px 22px;
+    position: relative;
 }
 
 .horarios-eyebrow {
@@ -199,32 +202,34 @@ footer {
 }
 
 .horarios h2 {
-    font-size: 32px;
-    letter-spacing: 3px;
+    font-size: 34px;
+    letter-spacing: 2px;
     text-transform: uppercase;
     margin-bottom: 14px;
     position: relative;
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
+    gap: 16px;
+    color: #111;
 }
 
+.horarios h2::before,
 .horarios h2::after {
     content: '';
-    position: absolute;
-    bottom: -10px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 60px;
-    height: 3px;
-    background: #ff9500;
-    border-radius: 2px;
+    width: 40px;
+    height: 2px;
+    background: #ddd;
+}
+
+.horarios h2 span {
+    color: #ff9500;
 }
 
 .horarios-sub {
     color: #888;
     font-size: 15px;
-    margin: 24px 0 40px;
+    margin: 20px 0 40px;
 }
-
 .horarios-grid {
     display: flex;
     justify-content: center;
