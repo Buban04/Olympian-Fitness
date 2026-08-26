@@ -11,7 +11,11 @@
 <header class="tituloindex" id="site-header"></header>
 
 <section class="servicios">
-  <h2>NUESTROS ENTRENADORES</h2>
+  <div class="entrenadores-intro">
+    <span class="horarios-eyebrow">OLYMPIAN FITNESS</span>
+    <h2>Nuestros entrenadores</h2>
+    <p class="entrenadores-sub">Profesionales listos para ayudarte a alcanzar tu meta</p>
+  </div>
   <div class="contenedor-cards" id="lista-entrenadores">
     <p class="cargando">Cargando entrenadores...</p>
   </div>
@@ -35,18 +39,27 @@ const { data, error } = await supabase
   .from('entrenadores')
   .select('id,especialidad,descripcion,usuarios(nombre_completo)');
 
+function iniciales(nombre) {
+  if (!nombre) return 'E';
+  const partes = nombre.trim().split(' ');
+  return (partes[0][0] + (partes[1]?.[0] || '')).toUpperCase();
+}
+
 if (error) {
   cont.innerHTML = `<p class="vacio">${escapeHtml(error.message)}</p>`;
 } else if (!data || data.length === 0) {
   cont.innerHTML = `<p class="vacio">Todavía no hay entrenadores registrados.</p>`;
 } else {
-  cont.innerHTML = data.map(x => `
+  cont.innerHTML = data.map(x => {
+    const nombre = x.usuarios?.nombre_completo || 'Entrenador';
+    return `
     <div class="card">
-      <div class="icono">🏋️</div>
-      <h3>${escapeHtml(x.usuarios?.nombre_completo || 'Entrenador')}</h3>
-      <p style="margin:15px 0; color:#555;">Especialidad: ${escapeHtml(x.especialidad)}</p>
-      ${x.descripcion ? `<p style="color:#777; font-size:13px;">${escapeHtml(x.descripcion)}</p>` : ''}
-    </div>`).join('');
+      <div class="avatar-entrenador">${iniciales(nombre)}</div>
+      <h3>${escapeHtml(nombre)}</h3>
+      <span class="badge-especialidad">${escapeHtml(x.especialidad)}</span>
+      ${x.descripcion ? `<p class="descripcion">${escapeHtml(x.descripcion)}</p>` : ''}
+    </div>`;
+  }).join('');
 }
 </script>
 </body>
