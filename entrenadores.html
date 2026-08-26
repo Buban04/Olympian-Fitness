@@ -31,8 +31,36 @@
 <div id="site-fab"></div>
 
 <script type="module">
-import { supabase, renderHeader, escapeHtml } from './app.js';
-renderHeader('entrenadores.html');
+import { supabase, renderHeader, escapeHtml, getProfile } from './app.js';
+const profile = await renderHeader('entrenadores.html');
+
+const telefonoGimnasio = "573205000000"; // ajusta al número real
+
+// Revisa si el usuario tiene el plan Premium (id 2) activo
+async function tienePremium(usuarioId) {
+  const { data, error } = await supabase
+    .from('membresias')
+    .select('id')
+    .eq('usuario_id', usuarioId)
+    .eq('plan_id', 2)
+    .eq('estado', 'activa')
+    .limit(1);
+  if (error) { console.error(error); return false; }
+  return data && data.length > 0;
+}
+
+const esPremium = profile ? await tienePremium(profile.id) : false;
+
+function botonReservar(nombreEntrenador) {
+  if (!profile) {
+    return `<a class="btn-reservar login" href="login.html">Inicia sesión para reservar</a>`;
+  }
+  if (!esPremium) {
+    return `<a class="btn-reservar bloqueado" href="planes.html" title="Disponible solo con el plan Premium">Solo para plan Premium</a>`;
+  }
+  const mensaje = encodeURIComponent(`Hola, quiero reservar con el entrenador ${nombreEntrenador}`);
+  return `<a class="btn-reservar activo" href="https://wa.me/${telefonoGimnasio}?text=${mensaje}" target="_blank">Escoger entrenador</a>`;
+}
 
 const cont = document.querySelector('#lista-entrenadores');
 const { data, error } = await supabase
@@ -58,6 +86,7 @@ if (error) {
       <h3>${escapeHtml(nombre)}</h3>
       <span class="badge-especialidad">${escapeHtml(x.especialidad)}</span>
       ${x.descripcion ? `<p class="descripcion">${escapeHtml(x.descripcion)}</p>` : ''}
+      ${botonReservar(escapeHtml(nombre))}
     </div>`;
   }).join('');
 }

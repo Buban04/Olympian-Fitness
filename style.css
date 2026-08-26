@@ -1433,3 +1433,42 @@ details summary {
         flex: none;
     }
 }
+/* =========================================================
+               BOTON ESCOGER ENTRENADOR
+   ========================================================= */
+   .btn-reservar {
+    display: inline-block;
+    margin-top: 18px;
+    padding: 10px 22px;
+    border-radius: 30px;
+    font-size: 13px;
+    font-weight: bold;
+    text-decoration: none;
+    transition: background 0.2s, color 0.2s;
+}
+
+.btn-reservar.activo {
+    background: #ff9500;
+    color: white;
+}
+
+.btn-reservar.activo:hover {
+    background: #e08600;
+}
+
+.btn-reservar.bloqueado {
+    background: #f0f0f0;
+    color: #999;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+.btn-reservar.login {
+    background: white;
+    color: #ff9500;
+    border: 2px solid #ff9500;
+}
+
+.btn-reservar.login:hover {
+    background: #fff5e6;
+}
