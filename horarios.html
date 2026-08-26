@@ -5,6 +5,19 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Horarios Disponibles - Olympian Fitness</title>
 <link rel="stylesheet" href="style.css">
+<style>
+.horarios-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; max-width: 900px; margin: 24px auto; padding: 0 20px; }
+.horario-card { background: #1f1f1f; color: #fff; border-radius: 12px; padding: 20px; border: 1px solid #2c2c2c; transition: border-color .15s; }
+.horario-card:hover { border-color: #FF7A1A; }
+.horario-card .top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.horario-card .icono { color: #FF7A1A; font-size: 20px; }
+.badge-abierto { font-size: 11px; font-weight: 600; color: #7BD88F; background: #1c2e1f; padding: 3px 10px; border-radius: 20px; }
+.horario-card .dias { font-size: 13px; color: #aaa; margin: 0 0 6px; }
+.horario-card .rango { font-size: 22px; font-weight: 700; margin: 0 0 14px; }
+.horario-card .contacto { display: flex; align-items: center; gap: 6px; padding-top: 10px; border-top: 1px solid #2c2c2c; font-size: 13px; color: #ddd; text-decoration: none; }
+.horario-card .contacto:hover { color: #7BD88F; }
+.horarios-msg { text-align: center; color: #aaa; padding: 20px; }
+</style>
 </head>
 <body>
 
@@ -12,10 +25,9 @@
 
 <section class="horarios">
   <h2>HORARIOS DISPONIBLES</h2>
-  <table id="tabla-horarios">
-    <tr><th>DÍAS</th><th>ABRIMOS</th><th>CERRAMOS</th><th>CONTÁCTANOS</th></tr>
-    <tr><td colspan="4" class="cargando">Cargando horarios...</td></tr>
-  </table>
+  <div id="horarios-grid" class="horarios-grid">
+    <p class="horarios-msg">Cargando horarios...</p>
+  </div>
 </section>
 
 <footer>
@@ -31,20 +43,45 @@
 import { supabase, renderHeader, escapeHtml } from './app.js';
 renderHeader('horarios.html');
 
-const tabla = document.querySelector('#tabla-horarios');
+const grid = document.querySelector('#horarios-grid');
+
+const rangosPorDias = {
+  "Lunes a Miércoles": { from: 1, to: 3 },
+  "Jueves a Viernes": { from: 4, to: 5 },
+  "Sábados, domingos y festivos": { from: 6, to: 0 }
+};
+
+function enRango(dia, from, to) {
+  return from <= to ? (dia >= from && dia <= to) : (dia >= from || dia <= to);
+}
+
+function abiertoAhora(dias, apertura, cierre) {
+  const rango = rangosPorDias[dias];
+  if (!rango || !apertura || !cierre) return false;
+  const ahora = new Date();
+  const mins = ahora.getHours() * 60 + ahora.getMinutes();
+  const [oh, om] = apertura.split(':').map(Number);
+  const [ch, cm] = cierre.split(':').map(Number);
+  return enRango(ahora.getDay(), rango.from, rango.to) && mins >= oh * 60 + om && mins <= ch * 60 + cm;
+}
+
 const { data, error } = await supabase.from('horario_gimnasio').select('*').order('id');
 
 if (error || !data || data.length === 0) {
-  tabla.innerHTML = `<tr><th>DÍAS</th><th>ABRIMOS</th><th>CERRAMOS</th><th>CONTÁCTANOS</th></tr>
-    <tr><td colspan="4">${error ? escapeHtml(error.message) : 'Aún no hay horarios registrados.'}</td></tr>`;
+  grid.innerHTML = `<p class="horarios-msg">${error ? escapeHtml(error.message) : 'Aún no hay horarios registrados.'}</p>`;
 } else {
-  tabla.innerHTML = `<tr><th>DÍAS</th><th>ABRIMOS</th><th>CERRAMOS</th><th>CONTÁCTANOS</th></tr>` +
-    data.map(h => `<tr>
-      <td>${escapeHtml(h.dias)}</td>
-      <td>${h.apertura?.slice(0,5) || '—'}</td>
-      <td>${h.cierre?.slice(0,5) || '—'}</td>
-      <td>${escapeHtml(h.telefono || '—')}</td>
-    </tr>`).join('');
+  grid.innerHTML = data.map(h => {
+    const abierto = abiertoAhora(h.dias, h.apertura, h.cierre);
+    return `<div class="horario-card">
+      <div class="top">
+        <span class="icono">⏱</span>
+        ${abierto ? '<span class="badge-abierto">Abierto ahora</span>' : ''}
+      </div>
+      <p class="dias">${escapeHtml(h.dias)}</p>
+      <p class="rango">${h.apertura?.slice(0,5) || '—'} - ${h.cierre?.slice(0,5) || '—'}</p>
+      <a class="contacto" href="tel:${escapeHtml(h.telefono || '')}">📞 ${escapeHtml(h.telefono || '—')}</a>
+    </div>`;
+  }).join('');
 }
 </script>
 </body>
