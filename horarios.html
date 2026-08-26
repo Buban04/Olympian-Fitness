@@ -5,26 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Horarios Disponibles - Olympian Fitness</title>
 <link rel="stylesheet" href="style.css">
-<style>
-.horarios-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; max-width: 900px; margin: 24px auto; padding: 0 20px; }
-.horario-card { background: #1f1f1f; color: #fff; border-radius: 12px; padding: 20px; border: 1px solid #2c2c2c; transition: border-color .15s; }
-.horario-card:hover { border-color: #FF7A1A; }
-.horario-card .top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-.horario-card .icono { color: #FF7A1A; font-size: 20px; }
-.badge-abierto { font-size: 11px; font-weight: 600; color: #7BD88F; background: #1c2e1f; padding: 3px 10px; border-radius: 20px; }
-.horario-card .dias { font-size: 13px; color: #aaa; margin: 0 0 6px; }
-.horario-card .rango { font-size: 22px; font-weight: 700; margin: 0 0 14px; }
-.horario-card .contacto { display: flex; align-items: center; gap: 6px; padding-top: 10px; border-top: 1px solid #2c2c2c; font-size: 13px; color: #ddd; text-decoration: none; }
-.horario-card .contacto:hover { color: #7BD88F; }
-.horarios-msg { text-align: center; color: #aaa; padding: 20px; }
-</style>
 </head>
 <body>
 
 <header class="tituloindex" id="site-header"></header>
 
 <section class="horarios">
-  <h2>HORARIOS DISPONIBLES</h2>
+  <span class="horarios-eyebrow">OLYMPIAN FITNESS</span>
+  <h2>Horarios disponibles</h2>
   <div id="horarios-grid" class="horarios-grid">
     <p class="horarios-msg">Cargando horarios...</p>
   </div>
